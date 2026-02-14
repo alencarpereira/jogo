@@ -1,3 +1,48 @@
+// ===============================
+// HELPERS
+// ===============================
+
+function getOdd(id) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+
+    const value = parseFloat(el.value);
+    if (isNaN(value) || value <= 1) return null;
+
+    return value;
+}
+
+function prob(odd) {
+    return 1 / odd;
+}
+
+function normalizeProbs(probs) {
+    const total = probs.reduce((a, b) => a + b, 0);
+    if (total === 0) return probs;
+    return probs.map(p => p / total);
+}
+
+function addSuggestion(arr, name, score) {
+    if (score >= 60) {
+        arr.push({ name, score });
+    }
+}
+
+// ===============================
+// EVENTO BOTÃO
+// ===============================
+
+document.addEventListener("DOMContentLoaded", function () {
+    const btn = document.getElementById("btnAnalisar");
+    if (btn) {
+        btn.addEventListener("click", analisarMercado);
+    }
+});
+
+// ===============================
+// FUNÇÃO PRINCIPAL
+// ===============================
+
 function analisarMercado() {
 
     let diagnostico = "";
@@ -62,7 +107,6 @@ function analisarMercado() {
         clareza += 6;
     }
 
-    // Contradição real
     if (over25 && under35) {
         if (over25 > 1.90 && under35 < 1.50) {
             contradicao = true;
@@ -85,7 +129,6 @@ function analisarMercado() {
     // ===============================
 
     const esc8 = getOdd("oddEsc8");
-
     let pressaoAlta = false;
 
     if (esc8 && esc8 < 1.65) {
@@ -98,13 +141,35 @@ function analisarMercado() {
     // ===============================
 
     const card3 = getOdd("oddCard3");
-
     let jogoTenso = false;
 
     if (card3 && card3 < 1.65) {
         jogoTenso = true;
         clareza -= 8;
     }
+
+    // ===============================
+    // AJUSTE PROFISSIONAL DE CLAREZA (ANTES DAS SUGESTÕES)
+    // ===============================
+
+    if (oddVisitante && oddVisitante < 1.35) {
+        clareza -= 5;
+    }
+
+    if (over25 && over25 < 1.30) {
+        clareza -= 4;
+    }
+
+    if (pressaoAlta && jogoExplosivo) {
+        clareza -= 3;
+    }
+
+    // Teto estrutural
+    const TETO_MAXIMO = 95;
+    clareza = Math.min(clareza, TETO_MAXIMO);
+
+    // Limite inferior
+    clareza = Math.max(0, clareza);
 
     // ===============================
     // DIAGNÓSTICO
@@ -128,14 +193,13 @@ function analisarMercado() {
     }
 
     // ===============================
-    // SUGESTÕES DINÂMICAS
+    // SUGESTÕES
     // ===============================
 
     if (!contradicao && clareza >= 60) {
 
         const scoreBase = 70 + Math.floor(clareza / 5);
 
-        // Favorito + Gols
         if (favorito && jogoControlado && !jogoTenso) {
             addSuggestion(sugestoes, `${favorito} & Under 3.5`, scoreBase + 5);
         }
@@ -144,12 +208,10 @@ function analisarMercado() {
             addSuggestion(sugestoes, `${favorito} & Over 1.5`, scoreBase + 3);
         }
 
-        // Escanteios entram se houver pressão real
         if (favorito && pressaoAlta && (jogoModerado || jogoExplosivo)) {
             addSuggestion(sugestoes, `Over Escanteios`, scoreBase);
         }
 
-        // Cartões apenas se jogo equilibrado e tenso
         if (equilibrio && jogoTenso) {
             addSuggestion(sugestoes, `Over Cartões`, scoreBase - 5);
         }
@@ -161,26 +223,32 @@ function analisarMercado() {
     // OUTPUT
     // ===============================
 
-    document.getElementById("diagnostico").innerText = diagnostico;
-
+    const diagEl = document.getElementById("diagnostico");
     const ranking = document.getElementById("ranking");
-    ranking.innerHTML = "";
+    const indice = document.getElementById("indiceMercado");
 
-    if (clareza < 60) {
-        ranking.innerHTML = "<li>❌ Mercado sem clareza suficiente.</li>";
-    } else if (sugestoes.length === 0) {
-        ranking.innerHTML = "<li>⚠ Nenhuma aposta atende critérios técnicos.</li>";
-    } else {
-        sugestoes.slice(0, 3).forEach((s, i) => {
-            const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
-            const li = document.createElement("li");
-            li.innerText = `${medal} ${s.name} — Confiança ${s.score}%`;
-            ranking.appendChild(li);
-        });
+    if (diagEl) diagEl.innerText = diagnostico;
+    if (ranking) ranking.innerHTML = "";
+
+    if (ranking) {
+        if (clareza < 60) {
+            ranking.innerHTML = "<li>❌ Mercado sem clareza suficiente.</li>";
+        } else if (sugestoes.length === 0) {
+            ranking.innerHTML = "<li>⚠ Nenhuma aposta atende critérios técnicos.</li>";
+        } else {
+            sugestoes.slice(0, 3).forEach((s, i) => {
+                const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
+                const li = document.createElement("li");
+                li.innerText = `${medal} ${s.name} — Confiança ${s.score}%`;
+                ranking.appendChild(li);
+            });
+        }
     }
 
-    clareza = Math.max(0, Math.min(100, clareza));
-    document.getElementById("indiceMercado").innerText = `${clareza}/100`;
+    if (indice) {
+        indice.innerText = `${clareza}/100`;
+    }
 }
+
 
 
