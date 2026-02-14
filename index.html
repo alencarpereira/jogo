@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Market Reader – Leitura de Odds</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <div class="app">
+
+        <header class="header">
+            <h1>📊 Market Reader</h1>
+            <p>Leitura de Mercado • Modo Trader</p>
+        </header>
+
+        <!-- ================= RESULTADO 1X2 ================= -->
+        <section class="card">
+            <h2>Resultado Final (1X2)</h2>
+            <div class="grid-3">
+                <input type="number" step="0.01" id="oddCasa" placeholder="Casa">
+                <input type="number" step="0.01" id="oddEmpate" placeholder="Empate">
+                <input type="number" step="0.01" id="oddVisitante" placeholder="Visitante">
+            </div>
+        </section>
+
+        <!-- ================= BTTS ================= -->
+        <section class="card">
+            <h2>Ambos Marcam</h2>
+            <div class="grid-2">
+                <input type="number" step="0.01" id="oddBttsSim" placeholder="BTTS Sim">
+                <input type="number" step="0.01" id="oddBttsNao" placeholder="BTTS Não">
+            </div>
+        </section>
+
+        <!-- ================= GOLS ================= -->
+        <section class="card">
+            <h2>Gols</h2>
+            <div class="grid-3">
+                <input type="number" step="0.01" id="oddOver15" placeholder="Over 1.5">
+                <input type="number" step="0.01" id="oddOver25" placeholder="Over 2.5">
+                <input type="number" step="0.01" id="oddUnder35" placeholder="Under 3.5">
+            </div>
+        </section>
+
+        <!-- ================= DUPLA CHANCE ================= -->
+        <section class="card">
+            <h2>Dupla Chance</h2>
+            <div class="grid-3">
+                <input type="number" step="0.01" id="odd1X" placeholder="1X">
+                <input type="number" step="0.01" id="oddX2" placeholder="X2">
+                <input type="number" step="0.01" id="odd12" placeholder="12">
+            </div>
+        </section>
+
+        <!-- ================= ESCANTEIOS ================= -->
+        <section class="card">
+            <h2>Escanteios</h2>
+            <div class="grid-3">
+                <input type="number" step="0.01" id="oddEsc6" placeholder="Over 6.5">
+                <input type="number" step="0.01" id="oddEsc7" placeholder="Over 7.5">
+                <input type="number" step="0.01" id="oddEsc8" placeholder="Over 8.5">
+            </div>
+        </section>
+
+        <!-- ================= CARTÕES ================= -->
+        <section class="card">
+            <h2>Cartões</h2>
+            <div class="grid-3">
+                <input type="number" step="0.01" id="oddCard1" placeholder="Over 1.5">
+                <input type="number" step="0.01" id="oddCard2" placeholder="Over 2.5">
+                <input type="number" step="0.01" id="oddCard3" placeholder="Over 3.5">
+            </div>
+        </section>
+
+        <!-- ================= AÇÃO ================= -->
+        <div class="actions">
+            <button id="btnAnalisar">Analisar Mercado</button>
+        </div>
+
+        <!-- ================= RESULTADOS ================= -->
+        <section class="result card">
+            <h2>Diagnóstico do Mercado</h2>
+            <p id="diagnostico">Preencha as odds e clique em analisar.</p>
+
+            <h3>🏆 Ranking de Apostas</h3>
+            <ul id="ranking">
+                <!-- JS injeta aqui -->
+            </ul>
+
+            <div class="confidence">
+                <span>Índice de Clareza do Mercado:</span>
+                <strong id="indiceMercado">–</strong>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
