@@ -1,39 +1,8 @@
-// ===============================
-// HELPERS
-// ===============================
-
-function getOdd(id) {
-    const value = parseFloat(document.getElementById(id).value);
-    return isNaN(value) || value <= 1 ? null : value;
-}
-
-function prob(odd) {
-    return 1 / odd;
-}
-
-function normalizeProbs(probs) {
-    const total = probs.reduce((a, b) => a + b, 0);
-    if (total === 0) return probs;
-    return probs.map(p => p / total);
-}
-
-function addSuggestion(arr, name, score) {
-    if (score >= 78) {
-        arr.push({ name, score });
-    }
-}
-
-// ===============================
-// MAIN
-// ===============================
-
-document.getElementById("btnAnalisar").addEventListener("click", analisarMercado);
-
 function analisarMercado() {
 
     let diagnostico = "";
     let sugestoes = [];
-    let clareza = 55; // ajustado
+    let clareza = 55;
     let contradicao = false;
 
     // ===============================
@@ -58,15 +27,13 @@ function analisarMercado() {
         const maxProb = Math.max(...probs);
         const index = probs.indexOf(maxProb);
 
-        if (maxProb > 0.50) {  // ajustado
-            clareza += 20;
+        if (maxProb > 0.55) {
+            clareza += 25;
             favorito = ["Casa", "Empate", "Visitante"][index];
         } else {
             equilibrio = true;
             clareza -= 10;
         }
-    } else {
-        clareza -= 5;
     }
 
     // ===============================
@@ -76,20 +43,26 @@ function analisarMercado() {
     const over25 = getOdd("oddOver25");
     const under35 = getOdd("oddUnder35");
 
-    let jogoAberto = false;
+    let jogoModerado = false;
+    let jogoExplosivo = false;
     let jogoControlado = false;
 
-    if (over25 && over25 < 1.75) {
-        jogoAberto = true;
+    if (over25 && over25 < 1.70) {
+        jogoModerado = true;
         clareza += 8;
+    }
+
+    if (over25 && over25 < 1.40) {
+        jogoExplosivo = true;
+        clareza += 12;
     }
 
     if (under35 && under35 < 1.55) {
         jogoControlado = true;
-        clareza += 5;
+        clareza += 6;
     }
 
-    // CONTRADIÇÃO REAL
+    // Contradição real
     if (over25 && under35) {
         if (over25 > 1.90 && under35 < 1.50) {
             contradicao = true;
@@ -103,7 +76,7 @@ function analisarMercado() {
 
     const bttsSim = getOdd("oddBttsSim");
 
-    if (bttsSim && bttsSim < 1.65 && jogoControlado) {
+    if (bttsSim && bttsSim < 1.60 && jogoModerado) {
         clareza += 5;
     }
 
@@ -115,9 +88,9 @@ function analisarMercado() {
 
     let pressaoAlta = false;
 
-    if (esc8 && esc8 < 1.75) {
+    if (esc8 && esc8 < 1.65) {
         pressaoAlta = true;
-        clareza += 5;
+        clareza += 6;
     }
 
     // ===============================
@@ -128,9 +101,9 @@ function analisarMercado() {
 
     let jogoTenso = false;
 
-    if (card3 && card3 < 1.70) {
+    if (card3 && card3 < 1.65) {
         jogoTenso = true;
-        clareza -= 10;
+        clareza -= 8;
     }
 
     // ===============================
@@ -138,32 +111,16 @@ function analisarMercado() {
     // ===============================
 
     if (contradicao) {
-        diagnostico = "Mercado apresenta inconsistência real. Evitar entrada.";
+        diagnostico = "Mercado apresenta inconsistência estrutural.";
     } else {
 
-        if (favorito) {
-            diagnostico += `Favoritismo consistente do ${favorito}. `;
-        }
-
-        if (equilibrio) {
-            diagnostico += `Jogo equilibrado. `;
-        }
-
-        if (jogoAberto) {
-            diagnostico += `Expectativa de pelo menos 2 gols. `;
-        }
-
-        if (jogoControlado) {
-            diagnostico += `Dificuldade para ultrapassar 3 gols. `;
-        }
-
-        if (pressaoAlta) {
-            diagnostico += `Pressão ofensiva sustentada. `;
-        }
-
-        if (jogoTenso) {
-            diagnostico += `Possível tensão competitiva. `;
-        }
+        if (favorito) diagnostico += `Favoritismo forte do ${favorito}. `;
+        if (equilibrio) diagnostico += `Jogo equilibrado. `;
+        if (jogoExplosivo) diagnostico += `Tendência ofensiva intensa. `;
+        else if (jogoModerado) diagnostico += `Expectativa de 2+ gols. `;
+        if (jogoControlado) diagnostico += `Dificuldade para ultrapassar 3 gols. `;
+        if (pressaoAlta) diagnostico += `Alta projeção de escanteios. `;
+        if (jogoTenso) diagnostico += `Possível jogo físico. `;
 
         if (diagnostico === "") {
             diagnostico = "Mercado neutro.";
@@ -171,21 +128,30 @@ function analisarMercado() {
     }
 
     // ===============================
-    // SUGESTÕES CONSERVADORAS
+    // SUGESTÕES DINÂMICAS
     // ===============================
 
     if (!contradicao && clareza >= 60) {
 
+        const scoreBase = 70 + Math.floor(clareza / 5);
+
+        // Favorito + Gols
         if (favorito && jogoControlado && !jogoTenso) {
-            addSuggestion(sugestoes, `${favorito} & Under 3.5`, 86);
+            addSuggestion(sugestoes, `${favorito} & Under 3.5`, scoreBase + 5);
         }
 
-        if (favorito && jogoAberto && !jogoTenso) {
-            addSuggestion(sugestoes, `${favorito} & Over 1.5`, 84);
+        if (favorito && (jogoModerado || jogoExplosivo) && !jogoTenso) {
+            addSuggestion(sugestoes, `${favorito} & Over 1.5`, scoreBase + 3);
         }
 
-        if (equilibrio && jogoControlado && !jogoTenso) {
-            addSuggestion(sugestoes, "Under 2.5", 80);
+        // Escanteios entram se houver pressão real
+        if (favorito && pressaoAlta && (jogoModerado || jogoExplosivo)) {
+            addSuggestion(sugestoes, `Over Escanteios`, scoreBase);
+        }
+
+        // Cartões apenas se jogo equilibrado e tenso
+        if (equilibrio && jogoTenso) {
+            addSuggestion(sugestoes, `Over Cartões`, scoreBase - 5);
         }
     }
 
@@ -201,9 +167,9 @@ function analisarMercado() {
     ranking.innerHTML = "";
 
     if (clareza < 60) {
-        ranking.innerHTML = "<li>❌ Mercado sem clareza suficiente para entrada segura.</li>";
+        ranking.innerHTML = "<li>❌ Mercado sem clareza suficiente.</li>";
     } else if (sugestoes.length === 0) {
-        ranking.innerHTML = "<li>⚠ Nenhuma aposta atende critérios conservadores.</li>";
+        ranking.innerHTML = "<li>⚠ Nenhuma aposta atende critérios técnicos.</li>";
     } else {
         sugestoes.slice(0, 3).forEach((s, i) => {
             const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : "🥉";
@@ -216,4 +182,5 @@ function analisarMercado() {
     clareza = Math.max(0, Math.min(100, clareza));
     document.getElementById("indiceMercado").innerText = `${clareza}/100`;
 }
+
 
