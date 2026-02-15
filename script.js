@@ -59,7 +59,7 @@ function analisarMercado() {
     let contradicao = false;
 
     // ===============================
-    // 1X2 — MODELO PROBABILÍSTICO REAL
+    // 1X2
     // ===============================
 
     const oddCasa = getOdd("oddCasa");
@@ -67,30 +67,31 @@ function analisarMercado() {
     const oddVisitante = getOdd("oddVisitante");
 
     let favorito = null;
+    let probs1x2 = null;
 
     if (oddCasa && oddEmpate && oddVisitante) {
 
-        const probs = normalizeProbs([
+        probs1x2 = normalizeProbs([
             prob(oddCasa),
             prob(oddEmpate),
             prob(oddVisitante)
         ]);
 
-        const H = entropy(probs);
+        const H = entropy(probs1x2);
         const Hmax = Math.log(3);
 
         const equilibrio = H / Hmax;
         const dominancia = 1 - equilibrio;
 
-        const maxProb = Math.max(...probs);
-        const index = probs.indexOf(maxProb);
+        const maxProb = Math.max(...probs1x2);
+        const index = probs1x2.indexOf(maxProb);
         favorito = ["Casa", "Empate", "Visitante"][index];
 
         clareza += dominancia * 40;
     }
 
     // ===============================
-    // GOLS — ESCALA CONTÍNUA
+    // GOLS
     // ===============================
 
     const over25 = getOdd("oddOver25");
@@ -102,13 +103,11 @@ function analisarMercado() {
     if (pOver25) clareza += (pOver25 - 0.5) * 60;
     if (pUnder35) clareza += (pUnder35 - 0.5) * 30;
 
-    // Detector de compressão 2–3 gols
     if (pOver25 && pUnder35 && pOver25 > 0.75 && pUnder35 > 0.65) {
         clareza -= 10;
         diagnostico += "Mercado extremamente comprimido em 2–3 gols. ";
     }
 
-    // Contradição estrutural
     if (pOver25 && pUnder35 && pOver25 < 0.45 && pUnder35 > 0.70) {
         contradicao = true;
         clareza -= 20;
@@ -145,22 +144,58 @@ function analisarMercado() {
     clareza = Math.max(0, Math.min(95, Math.round(clareza)));
 
     // ===============================
-    // DIAGNÓSTICO
+    // PROJEÇÕES ESTATÍSTICAS
     // ===============================
 
-    if (contradicao) {
-        diagnostico = "Mercado apresenta inconsistência estrutural.";
-    } else {
+    const percent = (p) => p ? (p * 100).toFixed(1) : "—";
 
-        if (favorito) diagnostico += `Favoritismo estrutural do ${favorito}. `;
-        if (pOver25 && pOver25 > 0.65) diagnostico += "Alta expectativa de gols. ";
-        if (pUnder35 && pUnder35 > 0.65) diagnostico += "Probabilidade relevante de limite até 3 gols. ";
-        if (pEsc && pEsc > 0.65) diagnostico += "Forte tendência de escanteios. ";
-        if (diagnostico === "") diagnostico = "Mercado relativamente neutro.";
+    let projCasa = probs1x2 ? percent(probs1x2[0]) : "—";
+    let projEmpate = probs1x2 ? percent(probs1x2[1]) : "—";
+    let projVisit = probs1x2 ? percent(probs1x2[2]) : "—";
+
+    let expectativaGols = 0;
+    if (pOver25 && pUnder35) {
+        expectativaGols = (2.5 * pOver25 + 2 * (1 - pOver25)).toFixed(2);
+    }
+
+    let placarProvavel = "0x0";
+    if (pOver25 && pOver25 > 0.6) placarProvavel = "2x1";
+    else if (pOver25 && pOver25 > 0.52) placarProvavel = "1x1";
+
+    // ===============================
+    // INTERPRETAÇÃO
+    // ===============================
+
+    let interpretacao = "";
+
+    if (probs1x2) {
+        const diff = Math.max(...probs1x2) - Math.min(...probs1x2);
+
+        if (diff < 0.08) {
+            interpretacao += "Confronto equilibrado sem favorito claro. ";
+        } else {
+            interpretacao += `Leve favoritismo para ${favorito}. `;
+        }
+    }
+
+    if (pOver25 && pOver25 < 0.45) {
+        interpretacao += "Tendência de poucos gols. ";
+    } else if (pOver25 && pOver25 > 0.6) {
+        interpretacao += "Boa probabilidade de jogo movimentado. ";
+    }
+
+    if (pBtts && pBtts < 0.45) {
+        interpretacao += "Baixa probabilidade de ambas marcarem. ";
+    } else if (pBtts && pBtts > 0.6) {
+        interpretacao += "Alta chance de ambas equipes marcarem. ";
+    }
+
+    if (expectativaGols) {
+        interpretacao += `Expectativa média de ${expectativaGols} gols.`;
     }
 
     // ===============================
-    // SUGESTÕES BASEADAS EM PROBABILIDADE
+    // SUGESTÃO PRINCIPAL
     // ===============================
 
     if (!contradicao && clareza >= 60) {
@@ -170,58 +205,45 @@ function analisarMercado() {
         if (favorito && pUnder35 && pUnder35 > 0.60) addSuggestion(sugestoes, `${favorito} & Under 3.5`, scoreBase + 3);
         if (pEsc && pEsc > 0.65) addSuggestion(sugestoes, `Over Escanteios`, scoreBase);
         if (pBtts && pBtts > 0.60) addSuggestion(sugestoes, `BTTS Sim`, scoreBase - 3);
-
-        // Outras apostas possíveis para fallback
         if (pOver25 && pOver25 > 0.50) addSuggestion(sugestoes, `Over 2.5 Gols`, scoreBase - 5);
         if (pUnder35 && pUnder35 > 0.50) addSuggestion(sugestoes, `Under 3.5 Gols`, scoreBase - 5);
         if (pCard && pCard < 0.65) addSuggestion(sugestoes, `Over 1.5 Cartões`, scoreBase - 10);
     }
 
-    // ===============================
-    // DEFINIÇÃO DE APOSTA PRINCIPAL E TEIMOSINHA
-    // ===============================
-
     sugestoes.sort((a, b) => b.score - a.score);
-
     const principal = sugestoes[0] || null;
 
-    // Teimosinha diversificada: não repetir a principal, score >= 60
-    const teimosinha = sugestoes.find(s => s.name !== (principal ? principal.name : "") && s.score >= 60) || null;
+    let melhorMercado = "Sem edge estatístico claro.";
+    if (principal) melhorMercado = principal.name;
 
     // ===============================
-    // OUTPUT
+    // SAÍDA FINAL FORMATADA
     // ===============================
+
+    const output = `
+📊 Análise Estatística
+Placar mais provável: ${placarProvavel}
+
+Over 2.5: ${percent(pOver25)}%
+BTTS: ${percent(pBtts)}%
+
+Vitória A: ${projCasa}%
+Empate: ${projEmpate}%
+Vitória B: ${projVisit}%
+
+🧠 Interpretação:
+${interpretacao}
+
+🎯 Sugestão estatística:
+Mercado com melhor projeção: ${melhorMercado}
+`;
 
     const diagEl = document.getElementById("diagnostico");
-    const ranking = document.getElementById("ranking");
     const indice = document.getElementById("indiceMercado");
 
-    if (diagEl) diagEl.innerText = diagnostico;
-    if (ranking) ranking.innerHTML = "";
-
-    if (ranking) {
-        if (clareza < 60) {
-            ranking.innerHTML = "<li>❌ Mercado sem clareza estatística suficiente.</li>";
-        } else if (!principal) {
-            ranking.innerHTML = "<li>⚠ Nenhuma aposta apresenta edge estrutural claro.</li>";
-        } else {
-            // mostra apenas a aposta principal no ranking
-            const li = document.createElement("li");
-            li.innerText = `🥇 ${principal.name} — Confiança ${principal.score}%`;
-            ranking.appendChild(li);
-
-            // teimosinha usada apenas para análise
-            if (teimosinha) {
-                console.log(`💡 Teimosinha analisada: ${teimosinha.name} — Score ${teimosinha.score}`);
-                diagnostico += `⚡ Teimosinha: Se a aposta principal falhar, considerar ${teimosinha.name}. `;
-            }
-        }
-    }
-
+    if (diagEl) diagEl.innerText = output;
     if (indice) indice.innerText = `${clareza}/100`;
-
-    // Atualiza diagnóstico final com teimosinha
-    if (diagEl) diagEl.innerText = diagnostico;
 }
+
 
 
