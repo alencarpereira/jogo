@@ -18,30 +18,16 @@ function prob(odd) {
     return 1 / odd;
 }
 
-function normalizeProbs(probs) {
-    const total = probs.reduce((a, b) => a + b, 0);
-    if (total === 0) return probs;
-    return probs.map(p => p / total);
+function normalizePair(p1, p2) {
+    const total = p1 + p2;
+    if (total === 0) return [0, 0];
+    return [p1 / total, p2 / total];
 }
 
-function entropy(probs) {
-    return -probs.reduce((sum, p) => {
-        return p > 0 ? sum + p * Math.log(p) : sum;
-    }, 0);
-}
-
-function calcMargem(probs) {
-    const soma = probs.reduce((a, b) => a + b, 0);
-    return (soma - 1) * 100;
-}
-
-function addSugestao(arr, nome, score, odd, probReal) {
-    arr.push({
-        nome,
-        score: Math.round(score),
-        odd: odd ? odd.toFixed(2) : "—",
-        prob: probReal ? (probReal * 100).toFixed(1) : "—"
-    });
+function normalizeTriple(p1, p2, p3) {
+    const total = p1 + p2 + p3;
+    if (total === 0) return [0, 0, 0];
+    return [p1 / total, p2 / total, p3 / total];
 }
 
 // ===============================
@@ -59,9 +45,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
 function analisarMercado() {
 
-    let clareza = 50;
-    let sugestoes = [];
-
     // ===============================
     // 1X2
     // ===============================
@@ -70,56 +53,38 @@ function analisarMercado() {
     const oddEmpate = getOdd("oddEmpate");
     const oddVisitante = getOdd("oddVisitante");
 
-    let probs1x2 = null;
-    let favorito = null;
-    let margem1x2 = null;
+    let probCasaReal = null;
+    let probVisitanteReal = null;
 
     if (oddCasa && oddEmpate && oddVisitante) {
 
-        const probsBrutas = [
-            prob(oddCasa),
-            prob(oddEmpate),
-            prob(oddVisitante)
-        ];
+        const pCasa = prob(oddCasa);
+        const pEmpate = prob(oddEmpate);
+        const pVisitante = prob(oddVisitante);
 
-        margem1x2 = calcMargem(probsBrutas);
-        probs1x2 = normalizeProbs(probsBrutas);
+        const normalizadas = normalizeTriple(pCasa, pEmpate, pVisitante);
 
-        const H = entropy(probs1x2);
-        const dominancia = 1 - (H / Math.log(3));
-
-        clareza += dominancia * 40;
-
-        const maxProb = Math.max(...probs1x2);
-        const index = probs1x2.indexOf(maxProb);
-        favorito = ["Casa", "Empate", "Visitante"][index];
-
-        if (maxProb > 0.55) {
-            addSugestao(sugestoes, `Vitória ${favorito}`, 65 + (maxProb * 40),
-                [oddCasa, oddEmpate, oddVisitante][index], maxProb);
-        }
+        probCasaReal = normalizadas[0];
+        probVisitanteReal = normalizadas[2];
     }
 
     // ===============================
-    // GOLS
+    // OVER 2.5 (PRECISA TER UNDER 2.5)
     // ===============================
 
-    const over25 = getOdd("oddOver25");
-    const under35 = getOdd("oddUnder35");
+    const oddOver25 = getOdd("oddOver25");
+    const oddUnder25 = getOdd("oddUnder25");
 
-    const pOver25 = over25 ? prob(over25) : null;
-    const pUnder35 = under35 ? prob(under35) : null;
+    let probOverReal = null;
 
-    if (pOver25) {
-        clareza += (pOver25 - 0.5) * 60;
+    if (oddOver25 && oddUnder25) {
 
-        if (pOver25 > 0.60) {
-            addSugestao(sugestoes, "Over 2.5 Gols", 60 + (pOver25 * 35), over25, pOver25);
-        }
-    }
+        const pOver = prob(oddOver25);
+        const pUnder = prob(oddUnder25);
 
-    if (pUnder35 && pUnder35 > 0.60) {
-        addSugestao(sugestoes, "Under 3.5 Gols", 60 + (pUnder35 * 30), under35, pUnder35);
+        const normalizadas = normalizePair(pOver, pUnder);
+
+        probOverReal = normalizadas[0];
     }
 
     // ===============================
@@ -127,77 +92,36 @@ function analisarMercado() {
     // ===============================
 
     const oddBttsSim = getOdd("oddBttsSim");
-    const pBtts = oddBttsSim ? prob(oddBttsSim) : null;
+    const oddBttsNao = getOdd("oddBttsNao");
 
-    if (pBtts) {
-        clareza += (pBtts - 0.5) * 25;
+    let probBttsReal = null;
 
-        if (pBtts > 0.60) {
-            addSugestao(sugestoes, "BTTS Sim", 58 + (pBtts * 30), oddBttsSim, pBtts);
-        }
+    if (oddBttsSim && oddBttsNao) {
+
+        const pSim = prob(oddBttsSim);
+        const pNao = prob(oddBttsNao);
+
+        const normalizadas = normalizePair(pSim, pNao);
+
+        probBttsReal = normalizadas[0];
     }
 
     // ===============================
-    // ESCANTEIOS
+    // SAÍDA FINAL LIMPA
     // ===============================
 
-    const oddEsc8 = getOdd("oddEsc8");
-    const pEsc = oddEsc8 ? prob(oddEsc8) : null;
+    const resultado = `
+📊 Probabilidades Reais do Mercado
 
-    if (pEsc && pEsc > 0.65) {
-        addSugestao(sugestoes, "Over 8.5 Escanteios", 55 + (pEsc * 25), oddEsc8, pEsc);
-    }
+Vitória Casa: ${probCasaReal ? (probCasaReal * 100).toFixed(1) + "%" : "—"}
+Vitória Visitante: ${probVisitanteReal ? (probVisitanteReal * 100).toFixed(1) + "%" : "—"}
 
-    // ===============================
-    // CARTÕES
-    // ===============================
+Over 2.5: ${probOverReal ? (probOverReal * 100).toFixed(1) + "%" : "—"}
 
-    const oddCard3 = getOdd("oddCard3");
-    const pCard = oddCard3 ? prob(oddCard3) : null;
-
-    if (pCard && pCard > 0.65) {
-        clareza -= 10;
-    }
-
-    // ===============================
-    // AJUSTE FINAL
-    // ===============================
-
-    clareza = Math.max(0, Math.min(95, Math.round(clareza)));
-
-    sugestoes.sort((a, b) => b.score - a.score);
-
-    const rankingEl = document.getElementById("ranking");
-    if (rankingEl) {
-        rankingEl.innerHTML = "";
-
-        if (sugestoes.length === 0) {
-            rankingEl.innerHTML = "<li>Sem oportunidade clara.</li>";
-        } else {
-            sugestoes.forEach(s => {
-                const li = document.createElement("li");
-                li.innerText = `${s.nome} | Prob: ${s.prob}% | Odd: ${s.odd} | Score: ${s.score}`;
-                rankingEl.appendChild(li);
-            });
-        }
-    }
-
-    const melhor = sugestoes[0];
-
-    const diagnostico = `
-📊 Leitura de Mercado
-
-Favorito: ${favorito || "—"}
-Margem 1X2: ${margem1x2 ? margem1x2.toFixed(2) + "%" : "—"}
-
-Melhor oportunidade:
-${melhor ? melhor.nome : "Nenhuma clara"}
-
-Índice de Clareza: ${clareza}/100
+BTTS: ${probBttsReal ? (probBttsReal * 100).toFixed(1) + "%" : "—"}
 `;
 
-    document.getElementById("diagnostico").innerText = diagnostico;
-    document.getElementById("indiceMercado").innerText = `${clareza}/100`;
+    document.getElementById("diagnostico").innerText = resultado;
 }
 
 
